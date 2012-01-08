@@ -4,6 +4,13 @@
 
 (set! *warn-on-reflection* true)
 
+(def init-epsilon 0.2)
+
+(def max-epochs 20000)
+(def desired-error 1e-2)
+(def learning-rate 0.5)
+(def epochs-per-report 100)
+
 (defn- sigmoid
   "Sigmoid function: 1/(1+exp(-z))."
   [z]
@@ -15,6 +22,7 @@
   (bind-rows [1] v))
 
 (defn- mmult-matrix
+  "Multiply two matrices and ensure the result is also a matrix."
   [a b]
   (let [result (mmult a b)]
     (if (matrix? result)
@@ -28,6 +36,8 @@
   (sigmoid (mmult-matrix weight-matrix activations)))
 
 (defn- forward-propagate
+  "Propagate activation values through the network and return all activation
+  values for all nodes."
   [weights input-activations]
   (let [input-activations (bind-bias input-activations)]
     ((fn [all-weights next-activations all-activations]
@@ -35,7 +45,9 @@
              all-weights (rest all-weights)
              last-iter (empty? all-weights)
              next-activations (forward-propagate-layer weights next-activations)
-             next-activations (if last-iter next-activations (bind-bias next-activations))
+             next-activations (if last-iter
+                                next-activations
+                                (bind-bias next-activations))
              all-activations (conj all-activations next-activations)]
          (if last-iter
            all-activations
@@ -43,6 +55,7 @@
      weights input-activations [input-activations])))
 
 (defn- output-from-activations
+  "Return output layer activation values."
   [activations]
   (map identity (last activations)))
 
@@ -53,7 +66,9 @@
         input-activations (matrix inputs)]
     (output-from-activations (forward-propagate weights input-activations))))
 
-(defn- round-output [output]
+(defn- round-output
+  "Round outputs to nearest integer."
+  [output]
   (vec (map #(Math/round ^Double %) output)))
 
 (defn run-binary
@@ -62,7 +77,6 @@
   [network inputs]
   (round-output (run network inputs)))
 
-(def init-epsilon 0.2) ; TODO: choose a smarter value
 
 (defn- random-list
   "Create a list of random doubles between -init-epsilon and +init-epsilon."
@@ -103,12 +117,13 @@
      output-deltas hidden-weights hidden-activations (list output-deltas))))
 
 (defn- add-delta-sum
-  ""
+  "Add new delta sum to accumulator."
   [delta-sums deltas activations]
   (map #(plus %1 (mmult %2 (trans %3)))
        delta-sums deltas activations))
 
 (defn- init-delta-sums
+  "Create delta sum accumulator matrix with all zero values."
   [weights]
   (map (fn [weight]
          (let [[rows cols] (dim weight)]
@@ -116,7 +131,7 @@
        weights))
 
 (defn- back-propagate-example
-  "Run one step of back propagation."
+  "Run back propagation on one sample and return delta sums."
   [delta-sums weights input expected-output]
   (let [activations (forward-propagate weights (matrix input))
         output (last activations)
@@ -125,14 +140,10 @@
         delta-sums (add-delta-sum delta-sums all-deltas activations)]
     delta-sums))
 
-(def max-epochs 20000)
-(def desired-error 1e-2)
-(def learning-rate 0.5)
-(def epochs-per-report 100)
 
 ; TODO: handle regularization
 (defn- back-propagate-all-examples
-  ""
+  "Run back propagation on all examples and return gradients."
   [weights examples]
   (let [num-examples (length examples)
         delta-sums (reduce
@@ -153,6 +164,7 @@
     (/ sum (length examples))))
 
 (defn- gradient-descent
+  "Preform gradient descent to adjust network weights"
   ([weights examples i]
    (let [gradients (back-propagate-all-examples weights examples)
          new-weights (map (fn [weights gradients]
