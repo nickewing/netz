@@ -8,7 +8,8 @@
 
 (def max-epochs 20000)
 (def desired-error 1e-2)
-(def learning-rate 0.5)
+(def learning-rate 0.25)
+(def learning-momentum 0.9)
 (def epochs-per-report 100)
 
 (defn- sigmoid
@@ -122,8 +123,9 @@
   (map #(plus %1 (mmult %2 (trans %3)))
        delta-sums deltas activations))
 
-(defn- init-delta-sums
-  "Create delta sum accumulator matrix with all zero values."
+(defn- new-weight-accumulator
+  "Create accumulator matrix list of the same structure as the given weight list
+  with all zero values."
   [weights]
   (map (fn [weight]
          (let [[rows cols] (dim weight)]
@@ -148,7 +150,7 @@
   (let [num-examples (length examples)
         delta-sums (reduce
                      #(back-propagate-example %1 weights (first %2) (second %2))
-                     (init-delta-sums weights) examples)
+                     (new-weight-accumulator weights) examples)
         gradients (map #(div % num-examples) delta-sums)]
     gradients))
 
@@ -165,21 +167,23 @@
 
 (defn- gradient-descent
   "Preform gradient descent to adjust network weights"
-  ([weights examples i]
+  ([weights examples last-changes epoch]
    (let [gradients (back-propagate-all-examples weights examples)
-         new-weights (map (fn [weights gradients]
-                            (minus weights (mult learning-rate gradients)))
-                          weights gradients)
+         changes (map (fn [weights gradients last-change]
+                        (plus (mult learning-rate gradients)
+                              (mult last-change learning-momentum)))
+                      weights gradients last-changes)
+         new-weights (map #(minus %1 %2) weights changes)
          mse (calc-mse new-weights examples)]
-     (if (= (mod i epochs-per-report) 0)
-       (println "Epoch " i "MSE" mse))
-     (if (or (> i max-epochs) (< mse desired-error))
+     (if (= (mod epoch epochs-per-report) 0)
+       (println "Epoch " epoch "MSE" mse))
+     (if (or (> epoch max-epochs) (< mse desired-error))
        (do
-         (println "Total epochs:" i "Final MSE:" mse)
+         (println "Total epochs:" epoch "Final MSE:" mse)
          new-weights)
-       (recur new-weights examples (inc i)))))
+       (recur new-weights examples changes (inc epoch)))))
   ([weights examples]
-   (gradient-descent weights examples 0)))
+   (gradient-descent weights examples (new-weight-accumulator weights) 0)))
 
 (defn train
   "Train network on training examples."
@@ -190,4 +194,5 @@
         weights (random-weight-matrices layer-sizes)
         examples (map #(vector %1 %2) inputs outputs)]
     {:weights (gradient-descent weights examples)}))
+
 
