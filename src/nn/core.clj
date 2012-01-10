@@ -4,8 +4,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def init-epsilon 0.2)
+(def init-epsilon 0.5)
 
+(def lambda 0)
 (def max-epochs 20000)
 (def desired-error 1e-2)
 (def learning-rate 0.25)
@@ -22,7 +23,7 @@
   [v]
   (bind-rows [1] v))
 
-(defn- mmult-matrix
+(defn- matrix-mult
   "Multiply two matrices and ensure the result is also a matrix."
   [a b]
   (let [result (mmult a b)]
@@ -34,7 +35,7 @@
   "Calculate activations for layer l+1 given weight matrix between layer l
   and l+1 and layer l activations."
   [weight-matrix activations]
-  (sigmoid (mmult-matrix weight-matrix activations)))
+  (sigmoid (matrix-mult weight-matrix activations)))
 
 (defn- forward-propagate
   "Propagate activation values through the network and return all activation
@@ -78,7 +79,6 @@
   [network inputs]
   (round-output (run network inputs)))
 
-
 (defn- random-list
   "Create a list of random doubles between -init-epsilon and +init-epsilon."
   [len]
@@ -96,7 +96,7 @@
 (defn- back-propagate-layer-deltas
   "Back propagate last-deltas (from layer l-1) and return layer l deltas."
   [last-deltas weight-matrix layer-activations]
-  (mult (mmult-matrix (trans weight-matrix) last-deltas)
+  (mult (matrix-mult (trans weight-matrix) last-deltas)
         (mult layer-activations (minus 1 layer-activations))))
 
 (defn- calc-hidden-deltas
@@ -142,38 +142,62 @@
         delta-sums (add-delta-sum delta-sums all-deltas activations)]
     delta-sums))
 
+(defn- regularize-gradients
+  "gradient = gradient + lambda * weights for all columns except the first."
+  [weights gradients]
+  (map (fn [gradients weights]
+         (let [[rows cols] (dim weights)]
+           (plus gradients
+                 (bind-columns
+                   (matrix 0 rows 1)             
+                   (mult lambda (sel weights :except-cols 0))))))
+       gradients
+       weights))
 
-; TODO: handle regularization
 (defn- back-propagate-all-examples
   "Run back propagation on all examples and return gradients."
   [weights examples]
-  (let [num-examples (length examples)
-        delta-sums (reduce
+  (let [delta-sums (reduce
                      #(back-propagate-example %1 weights (first %2) (second %2))
-                     (new-weight-accumulator weights) examples)
-        gradients (map #(div % num-examples) delta-sums)]
-    gradients))
+                     (new-weight-accumulator weights)
+                     examples)]
+    (regularize-gradients
+      weights
+      (map #(div % (length examples)) delta-sums))))
 
 (defn- calc-mse
   "Calculate mean squared error of predictions"
   [weights examples]
-  (let [sum (reduce (fn [total example]
-                      (let [[input expected-output] example
-                            output (output-from-activations
-                                               (forward-propagate weights (matrix input)))]
-                        (+ total (sum (pow (minus output expected-output) 2)))))
-                    0 examples)]
+  (let [sum (reduce
+              (fn [total example]
+                (let [[input expected-output] example
+                      output (output-from-activations
+                               (forward-propagate weights (matrix input)))]
+                  (+ total (sum (pow (minus output expected-output) 2)))))
+              0
+              examples)]
     (/ sum (length examples))))
+
+(defn- calc-weight-changes
+  "Calculate weight changes:
+  changes = learning rate * gradients + last change * learning momentum."
+  [gradients last-changes]
+  (map #(plus (mult learning-rate %1) (mult %2 learning-momentum))
+       gradients
+       last-changes))
+
+(defn- apply-weight-changes
+  "Applies changes to weights:
+  ∀(weights, changes) weights := weights - changes."
+  [weights changes]
+  (map #(minus %1 %2) weights changes))
 
 (defn- gradient-descent
   "Preform gradient descent to adjust network weights"
   ([weights examples last-changes epoch]
    (let [gradients (back-propagate-all-examples weights examples)
-         changes (map (fn [weights gradients last-change]
-                        (plus (mult learning-rate gradients)
-                              (mult last-change learning-momentum)))
-                      weights gradients last-changes)
-         new-weights (map #(minus %1 %2) weights changes)
+         changes (calc-weight-changes gradients last-changes)
+         new-weights (apply-weight-changes weights changes)
          mse (calc-mse new-weights examples)]
      (if (= (mod epoch epochs-per-report) 0)
        (println "Epoch " epoch "MSE" mse))
