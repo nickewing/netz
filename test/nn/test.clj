@@ -52,32 +52,3 @@
     (is (= [0] (run-binary network [1 0])))
     (is (= [0] (run-binary network [0 1])))
     (is (= [1] (run-binary network [1 1])))))
-
-; (deftest binary-xnor-xor-train
-  ; (let [inputs [[0 0 0]
-                ; [0 1 0]
-                ; [1 0 0]
-                ; [1 1 0]
-                ; [0 0 1]
-                ; [0 1 1]
-                ; [1 0 1]
-                ; [1 1 1]]
-        ; outputs [[1 0]
-                 ; [0 0]
-                 ; [0 1]
-                 ; [1 1]
-                 ; [1 1]
-                 ; [0 1]
-                 ; [0 0]
-                 ; [1 0]]
-        ; network (train inputs outputs {:hidden-neurons [3]
-                                       ; :learning-rate 0.2
-                                       ; :learning-momentum 0.9})]
-    ; (is (= [1 0] (run-binary network [0 0 0])))
-    ; (is (= [0 0] (run-binary network [0 1 0])))
-    ; (is (= [0 1] (run-binary network [1 0 0])))
-    ; (is (= [1 1] (run-binary network [1 1 0])))
-    ; (is (= [1 1] (run-binary network [0 0 1])))
-    ; (is (= [0 1] (run-binary network [0 1 1])))
-    ; (is (= [0 0] (run-binary network [1 0 1])))
-    ; (is (= [1 0] (run-binary network [1 1 1])))))

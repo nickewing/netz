@@ -57,15 +57,16 @@
            (matrix 0 rows cols)))
        weights))
 
-(defn- back-propagate-example
-  "Run back propagation on one sample and return delta sums."
-  [delta-sums weights input expected-output]
+(defn- calc-example-error
+  "Calculate deltas and squared error for given example."
+  [delta-sums weights [input expected-output]]
   (let [activations (forward-propagate-all-activations weights (matrix input))
         output (last activations)
         output-deltas (minus output expected-output)
         all-deltas (calc-hidden-deltas weights activations output-deltas)
         delta-sums (add-delta-sum delta-sums all-deltas activations)]
-    delta-sums))
+    (vector delta-sums
+            (sum (pow output-deltas 2)))))
 
 (defn- regularize-gradients
   "gradient = gradient + lambda * weights for all columns except the first."
@@ -80,17 +81,29 @@
        gradients
        weights))
 
-(defn- back-propagate-all-examples
-  "Run back propagation on all examples and return gradients."
+(defn- calc-all-errors
+  "Calculate gradients and MSE for example set."
   [network weights examples]
-  (let [delta-sums (reduce
-                     #(back-propagate-example %1 weights (first %2) (second %2))
-                     (new-weight-accumulator weights)
-                     examples)]
-    (regularize-gradients
-      network
-      weights
-      (map #(div % (length examples)) delta-sums))))
+  (let [num-examples (length examples)]
+    (loop [delta-sums (new-weight-accumulator weights)
+           total-error 0
+           examples examples]
+      (let [example (first examples)
+            examples (rest examples)
+            [delta-sums squared-error] (calc-example-error delta-sums
+                                                           weights
+                                                           example)
+            total-error (+ total-error squared-error)]
+        (if (empty? examples)
+          (vector
+            ; gradients
+            (regularize-gradients
+              network
+              weights
+              (map #(div % num-examples) delta-sums))
+            ; mean squared error
+            (/ total-error num-examples))
+          (recur delta-sums total-error examples))))))
 
 (defn- calc-weight-changes
   "Calculate weight changes:

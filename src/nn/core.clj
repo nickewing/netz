@@ -4,15 +4,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defn report-callback
+  [epoch mse last]
+  (if last
+    (println "Finished Epoch" epoch "MSE" mse)
+    (println "Epoch" epoch "MSE" mse)))
+
 (def default-options
   {:max-epochs 20000
    :desired-error 1e-2
    :learning-rate 0.25
    :learning-momentum 0
+   :callback report-callback
    :callback-resolution 100
    :regularization-constant 0})
 
-(defn option
+(defn- option
   [network option-name]
   (or (option-name (:options network))
       (option-name default-options)))
