@@ -1,4 +1,4 @@
-(in-ns 'nn.core)
+(in-ns 'netz.core)
 
 (def init-epsilon 0.5)
 

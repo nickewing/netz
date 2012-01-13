@@ -1,4 +1,4 @@
-(in-ns 'nn.core)
+(in-ns 'netz.core)
 
 (defn- gradient-descent-complete?
   [network epoch mse]

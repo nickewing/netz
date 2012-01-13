@@ -1,4 +1,4 @@
-(in-ns 'nn.core)
+(in-ns 'netz.core)
 
 (defn- bind-bias
   "Prepend the bias unit to a layer activation vector."

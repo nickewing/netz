@@ -1,5 +1,5 @@
-(ns nn.test
-  (:use nn.core
+(ns netz.test
+  (:use netz.core
         clojure.test
         incanter.core))
 

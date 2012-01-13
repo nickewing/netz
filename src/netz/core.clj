@@ -1,4 +1,4 @@
-(ns nn.core
+(ns netz.core
   (:gen-class)
   (:use incanter.core))
 
