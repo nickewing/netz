@@ -2,8 +2,6 @@
   (:gen-class)
   (:use incanter.core))
 
-(set! *warn-on-reflection* true)
-
 (defn report-callback
   [epoch mse last]
   (if last
