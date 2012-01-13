@@ -10,7 +10,7 @@
 
 (def default-options
   {:max-epochs 20000
-   :desired-error 1e-2
+   :desired-error 0.005
    :learning-rate 0.25
    :learning-momentum 0
    :callback report-callback
