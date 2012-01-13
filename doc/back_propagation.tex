@@ -1,0 +1,143 @@
+\documentclass[12pt,notitlepage]{report}
+\usepackage{amsmath}
+\usepackage{algorithmic}
+\usepackage[T1]{fontenc}
+\title{Back Propagation in Netz}
+\author{Nick Ewing}
+\date{}
+
+\setlength{\parskip}{0pt}
+\setlength{\parsep}{3pt}
+\setlength{\headsep}{0pt}
+\setlength{\topskip}{0pt}
+\setlength{\topmargin}{0pt}
+\setlength{\topsep}{0pt}
+\setlength{\partopsep}{0pt}
+
+\addtolength{\textheight}{1.75in}
+
+\linespread{0.5}
+
+\begin{document}
+
+  \maketitle
+
+  \section{Descripton}
+
+  The following definitions and algorithm characterize the implementation of
+  {\tt netz.core}.
+
+  \section{Definitions}
+
+  The following variables are used:
+
+  $m$: The number of training examples.
+
+  $n$: The number of input features for an example.
+
+  $k$: The number of outputs for an example.
+
+  $\{(x^{i}, y^{i}), \dots, (x^{m}, y^{m})\}$: The training set, composed of $m$
+  input-output example pairs where $x^{(i)}$ is an $n$ dimensional vector
+  containing the $i^{th}$ input and $y^{(i)}$ a $k$ dimensional vector
+  containing the $i^{th}$ expected output.
+
+  $X$: An $m \times n$ matrix where the $i^{th}$ row contains $(x^{(i)})^{T}$.
+
+  $Y$: An $m \times k$ matrix where the $i^{th}$ row contains $(y^{(i)})^{T}$.
+
+  $L$: The number of layers in the network.
+
+  $s_{l}$: The number of neurons in layer $l$.  $s_{1} = n$ and $s_{L} = k$.
+
+  $\lambda$: The regularization constant.
+
+  $\alpha$: The learning rate constant.
+
+  $\gamma$: The learning momentum constant.
+
+  $\Theta_{ij}^{(l)}$: The synapse weight between neuron $i$ of layer $l$ and
+  neuron $j$ of layer $l+1$.  $\Theta^{(l)}$ is thus a
+  $s_{(j+1)} \times s_{j}+1$ matrix.
+
+  $A_{ij}^{(l)}$: The change in synapse weight between neuron $i$ of layer $l$
+  and neuron $j$ of layer $l+1$ of the last epoch.  $A^{(l)}$ is thus a
+  $s_{(j+1)} \times s_{j}+1$ matrix.
+
+  $a^{(l)}$: A vector of length $s_{l} + 1$ when $l < L$ and $s_{l}$ when $l =
+  L$, containing the activation values for neurons in layer $l$ where
+  $a_{0}^{(l)}$ is the bias neuron when $l < L$.
+
+  $\delta^{(l)}$: A vector of length $s_{l} + 1$ when $l < L$ and $s_{l}$ when
+  $l = L$, containing the back propagated error values associated with neurons
+  in layer $l$.
+
+  $\Delta_{ij}^{(l)}$: The sum change from all examples in synapse weight
+  between neuron $i$ of layer $l$ and neuron $j$ of layer $l+1$.  $\Delta^{(l)}$
+  is thus a $s_{(j+1)} \times s_{j}+1$ matrix.
+
+  $D_{ij}^{(l)}$: The regularized mean change from all examples in synapse
+  weight between neuron $i$ of layer $l$ and neuron $j$ of layer $l+1$.
+  $D^{(l)}$ is thus a $s_{(j+1)} \times s_{j}+1$ matrix.
+
+  $.*$: Element-wise matrix multiplication operator.
+
+  The sigmoid activation function:
+  \begin{align}
+    g(z) = \frac{1}{1 - e^{-z}}
+  \end{align}
+
+  \section{Algorithm}
+
+  \begin{algorithmic}
+
+    \STATE $\Theta^{(j)} \gets $ \
+      RandomValuedMatrix($s_{(j+1)}$, $s_{j}+1$) \
+      {\bf for} $j = 1 \dots L - 1$
+
+    \STATE $A^{(j)} \gets $ \
+      ZeroValuedMatrix($s_{(j+1)}$, $s_{j}+1$) \
+      {\bf for} $j = 1 \dots L - 1$
+
+    \REPEAT
+      
+      \FOR {$i \gets 1 \dots m$}
+
+        \STATE \COMMENT{Forward propagate input activations through network}
+        \STATE $a^{(1)} \gets x^{(i)}$
+
+        \STATE $a^{(l)} \gets g(\Theta^{(l-1)}a^{(l-1)})$ {\bf for} $l = 2 \dots L$
+
+        \STATE \COMMENT{Find error of output layer from training outputs}
+        \STATE $\delta^{(L)} \gets a^{(L)} - y^{(i)}$
+
+        \STATE \COMMENT{Back propagate error through network}
+        \STATE $\delta^{(L)} \gets (\Theta^{(l)})^{T}\delta^{(l+1)} .* \
+          a^{(l)} .* (1 - a^{(l)})$ {\bf for} $l = L-1 \dots 2$
+
+        \STATE \COMMENT{Multiply errors by activations}
+        \STATE $\Delta^{(l)} \gets \Delta^{(l)} + \delta^{(l+1)} \
+          (a^{(l)})^{T}$ {\bf for} $l \gets 1 \dots L-1$
+
+      \ENDFOR
+
+      \STATE \COMMENT{Divide errors by the number of training examples and add
+      in regularization}
+      \STATE $D_{ij}^{(l)} \gets \frac{1}{m} \Delta_{ij}^{(l)} + \lambda \Theta^{(l)} {\bf if} j \neq 0$
+      \STATE $D_{ij}^{(l)} \gets \frac{1}{m} \Delta_{ij}^{(l)} {\bf if} j = 0$
+
+      \STATE \COMMENT{Adjust weights}
+      \FOR {$j \gets 1 \dots L-1$}
+        \STATE $A^{(j)} \gets \alpha D^{(j)} + \gamma A^{(j)}$
+
+        \STATE $\Theta^{(j)} \gets \Theta^{(j)} - A^{(j)}$
+      \ENDFOR
+
+      \STATE $epoch \gets epoch + 1$
+      \STATE $MSE \gets$ CalculateMeanSquareError($\Theta$, $X$, $Y$)
+
+    \UNTIL{MSE < desired-error {\bf or} epoch > max-epoch}
+
+  \end{algorithmic}
+
+\end{document}
