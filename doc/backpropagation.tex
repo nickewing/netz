@@ -1,8 +1,9 @@
 \documentclass[12pt,notitlepage]{report}
 \usepackage{amsmath}
 \usepackage{algorithmic}
+\usepackage{upgreek}
 \usepackage[T1]{fontenc}
-\title{Back Propagation in Netz}
+\title{Backpropagation in Netz}
 \author{Nick Ewing}
 \date{}
 
@@ -29,7 +30,18 @@
 
   \section{Definitions}
 
-  The following variables are used:
+  The following variables and parameters are used in the Backpropagation
+  algorithm.
+
+  $\lambda$: The regularization constant.
+
+  $\alpha$: The learning rate constant.
+
+  $\gamma$: The learning momentum constant.
+
+  $\tau_{max}$: The maximum number of epochs allowed.
+
+  $\upvarepsilon_{min}$: The desired error.
 
   $m$: The number of training examples.
 
@@ -50,11 +62,13 @@
 
   $s_{l}$: The number of neurons in layer $l$.  $s_{1} = n$ and $s_{L} = k$.
 
-  $\lambda$: The regularization constant.
+  $\epsilon$: The sum squared error of all training examples forward propagated
+  through the network in the current epoch.
 
-  $\alpha$: The learning rate constant.
+  $\upvarepsilon$: The mean squared error of all training examples forward
+  propagated through the network in the current epoch.
 
-  $\gamma$: The learning momentum constant.
+  $\tau$: The current epoch.
 
   $\Theta_{ij}^{(l)}$: The synapse weight between neuron $i$ of layer $l$ and
   neuron $j$ of layer $l+1$.  $\Theta^{(l)}$ is thus a
@@ -84,7 +98,7 @@
 
   The sigmoid activation function:
   \begin{align}
-    g(z) = \frac{1}{1 - e^{-z}}
+    g(z) = (1 - e^{-z})^{-1}
   \end{align}
 
   \section{Algorithm}
@@ -99,33 +113,53 @@
       ZeroValuedMatrix($s_{(j+1)}$, $s_{j}+1$) \
       {\bf for} $j = 1 \dots L - 1$
 
+    \vspace{10pt}
     \REPEAT
       
+      \STATE $\epsilon \gets 0$
+
+      \vspace{10pt}
       \FOR {$i \gets 1 \dots m$}
 
         \STATE \COMMENT{Forward propagate input activations through network}
         \STATE $a^{(1)} \gets x^{(i)}$
-
         \STATE $a^{(l)} \gets g(\Theta^{(l-1)}a^{(l-1)})$ {\bf for} $l = 2 \dots L$
 
+        \vspace{10pt}
         \STATE \COMMENT{Find error of output layer from training outputs}
         \STATE $\delta^{(L)} \gets a^{(L)} - y^{(i)}$
 
-        \STATE \COMMENT{Back propagate error through network}
+        \vspace{10pt}
+        \STATE \COMMENT{Add to sum squared error}
+        \STATE $\epsilon \gets \epsilon + \sum_{j=1}^{k}(\delta_{j}^{(L)})^{2}$
+
+        \vspace{10pt}
+        \STATE \COMMENT{Backpropagate error through network}
         \STATE $\delta^{(L)} \gets (\Theta^{(l)})^{T}\delta^{(l+1)} .* \
           a^{(l)} .* (1 - a^{(l)})$ {\bf for} $l = L-1 \dots 2$
 
+        \vspace{10pt}
         \STATE \COMMENT{Multiply errors by activations}
         \STATE $\Delta^{(l)} \gets \Delta^{(l)} + \delta^{(l+1)} \
           (a^{(l)})^{T}$ {\bf for} $l \gets 1 \dots L-1$
 
       \ENDFOR
 
+      \vspace{10pt}
+      \STATE \COMMENT{Divide sum squared error by no. examples to get MSE}
+      \STATE $\upvarepsilon \gets \epsilon / m$
+
+      {\bf return if} $\upvarepsilon < \upvarepsilon_{min}$
+
+      \vspace{10pt}
       \STATE \COMMENT{Divide errors by the number of training examples and add
       in regularization}
-      \STATE $D_{ij}^{(l)} \gets \frac{1}{m} \Delta_{ij}^{(l)} + \lambda \Theta^{(l)} {\bf if} j \neq 0$
-      \STATE $D_{ij}^{(l)} \gets \frac{1}{m} \Delta_{ij}^{(l)} {\bf if} j = 0$
+      \STATE $D_{ij}^{(l)} \gets \frac{1}{m} \Delta_{ij}^{(l)} + \
+        \lambda \Theta_{ij}^{(l)}$ {\bf for all} $l, i$ where $j \neq 0$
+      \STATE $D_{ij}^{(l)} \gets \frac{1}{m} \Delta_{ij}^{(l)}$ \
+        {\bf for all} $l, i$ where $j = 0$
 
+      \vspace{10pt}
       \STATE \COMMENT{Adjust weights}
       \FOR {$j \gets 1 \dots L-1$}
         \STATE $A^{(j)} \gets \alpha D^{(j)} + \gamma A^{(j)}$
@@ -133,10 +167,11 @@
         \STATE $\Theta^{(j)} \gets \Theta^{(j)} - A^{(j)}$
       \ENDFOR
 
-      \STATE $epoch \gets epoch + 1$
-      \STATE $MSE \gets$ CalculateMeanSquareError($\Theta$, $X$, $Y$)
+      \vspace{10pt}
 
-    \UNTIL{MSE < desired-error {\bf or} epoch > max-epoch}
+      \STATE $\tau \gets \tau + 1$
+
+    \UNTIL{$\tau > \tau_{max}$}
 
   \end{algorithmic}
 
