@@ -6,7 +6,8 @@
   [epoch mse last]
   (if last
     (println "Finished Epoch" epoch "MSE" mse)
-    (println "Epoch" epoch "MSE" mse)))
+    (println "Epoch" epoch "MSE" mse))
+  true)
 
 (def default-options
   {:max-epochs 20000
