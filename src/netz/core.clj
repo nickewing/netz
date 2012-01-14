@@ -3,8 +3,8 @@
   (:use incanter.core))
 
 (defn report-callback
-  [epoch mse last]
-  (if last
+  [network epoch mse complete]
+  (if complete
     (println "Finished Epoch" epoch "MSE" mse)
     (println "Epoch" epoch "MSE" mse))
   true)
@@ -60,7 +60,7 @@
           layer-sizes (conj (vec (cons num-inputs hidden-neurons)) num-outputs)
           network (assoc network :weights (random-weight-matrices layer-sizes))
           examples (map #(vector %1 %2) inputs outputs)]
-      (gradient-descent network examples))))
+      (gradient-descent-backpropagation network examples))))
 
 (defn train [inputs outputs & [options]]
   (let [network (MultiLayerPerceptron. nil options)]

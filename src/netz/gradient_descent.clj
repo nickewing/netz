@@ -6,28 +6,29 @@
       (< mse (option network :desired-error))))
 
 (defn- call-callback-for-epoch
-  [callback epochs-per-callback epoch mse]
-  (if (and callback
-           (= (mod epoch epochs-per-callback) 0))
-    (callback epoch mse false)
-    true))
+  [network epoch mse complete]
+  (let [callback  (option network :callback)
+        callback-resolution (option network :callback-resolution)]
+    (if (and callback
+             (or complete
+                 (= (mod epoch callback-resolution) 0)))
+      (callback network epoch mse complete)
+      true)))
 
-(defn- gradient-descent
-  "Preform gradient descent to adjust network weights"
+(defn- gradient-descent-backpropagation
+  "Preform gradient descent backpropagation to adjust network weights"
   [network examples]
-  (let [callback (option network :callback)
-        epochs-per-callback 100]
-    (loop [weights (:weights network)
-           last-changes (new-weight-accumulator (:weights network))
-           epoch 0]
-      (let [epoch (inc epoch)
-            [gradients mse] (calc-all-errors network weights examples)]
-        (if (or (gradient-descent-complete? network epoch mse)
-                (not (call-callback-for-epoch callback epochs-per-callback epoch mse)))
-          (do
-            (if callback
-              (callback epoch mse true))
-            (assoc network :weights weights))
-          (let [changes (calc-weight-changes network gradients last-changes)
-                new-weights (apply-weight-changes weights changes)]
-            (recur new-weights changes epoch)))))))
+  (loop [network network
+         last-changes (new-weight-accumulator (:weights network))
+         epoch 0]
+    (let [epoch (inc epoch)
+          [gradients mse] (calc-all-errors network examples)]
+      (if (or (gradient-descent-complete? network epoch mse)
+              (not (call-callback-for-epoch network epoch mse false)))
+        (do
+          (call-callback-for-epoch network epoch mse true)
+          network)
+        (let [changes (calc-weight-changes network gradients last-changes)
+              new-weights (apply-weight-changes (:weights network) changes)
+              network (assoc network :weights new-weights)]
+          (recur network changes epoch))))))

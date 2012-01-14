@@ -70,7 +70,7 @@
 
 (defn- regularize-gradients
   "gradient = gradient + lambda * weights for all columns except the first."
-  [network weights gradients]
+  [network gradients]
   (map (fn [gradients weights]
          (let [[rows cols] (dim weights)]
            (plus gradients
@@ -79,28 +79,24 @@
                    (mult (option network :regularization-constant)
                          (sel weights :except-cols 0))))))
        gradients
-       weights))
+       (:weights network)))
 
 (defn- calc-all-errors
   "Calculate gradients and MSE for example set."
-  [network weights examples]
-  (let [num-examples (length examples)]
+  [network examples]
+  (let [num-examples (length examples)
+        weights (:weights network)]
     (loop [delta-sums (new-weight-accumulator weights)
            total-error 0
            examples examples]
       (let [example (first examples)
             examples (rest examples)
-            [delta-sums squared-error] (calc-example-error delta-sums
-                                                           weights
-                                                           example)
+            [delta-sums squared-error] (calc-example-error delta-sums weights example)
             total-error (+ total-error squared-error)]
         (if (empty? examples)
           (vector
             ; gradients
-            (regularize-gradients
-              network
-              weights
-              (map #(div % num-examples) delta-sums))
+            (regularize-gradients network (map #(div % num-examples) delta-sums))
             ; mean squared error
             (/ total-error num-examples))
           (recur delta-sums total-error examples))))))
