@@ -65,7 +65,7 @@ after every epoch of training.  Returning false or nil from this callback will
 cause training to stop.  See netz.core/report-callback for an example. Default:
 netz.core/report-callback.
 
-*:callback-resolution - An integer specifying how often the callback function is
+*:callback-resolution* - An integer specifying how often the callback function is
 invoked.  Default: 100.
 
 *:max-epochs* - An integer specifying the maximum number of training epochs.
