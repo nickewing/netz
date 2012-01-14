@@ -74,6 +74,9 @@ Default: 20,000.
 error (MSE) used while training.  Training will stop once the MSE drops below
 the desired error.
 
+*:calc-batch-error-in-parallel* - Calculate example batch errors in parallel for
+each epoch.  Default: true.
+
 License and Copyright
 ---------------------
 

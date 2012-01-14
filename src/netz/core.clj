@@ -9,13 +9,14 @@
   true)
 
 (def default-options
-  {:max-epochs 20000
-   :desired-error 0.005
-   :learning-rate 0.25
-   :learning-momentum 0
-   :callback report-callback
-   :callback-resolution 100
-   :regularization-constant 0})
+  {:max-epochs 20000 ; maximum number of epochs for training
+   :desired-error 0.005 ; minimum desired error for training
+   :learning-rate 0.25 ; learning rate for training, see docs
+   :learning-momentum 0 ; learning momentum for training, see docs
+   :callback report-callback ; called every epoch before weight adjustments
+   :callback-resolution 100 ; how often to call callback (in no. epochs)
+   :regularization-constant 0 ; regularization constant for training, see docs
+   :calc-batch-error-in-parallel true}) ; calculate batch errors in parallel
 
 (defn- network-option
   [network option-name]

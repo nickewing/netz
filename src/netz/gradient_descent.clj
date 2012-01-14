@@ -18,17 +18,21 @@
 (defn- gradient-descent-backpropagation
   "Preform gradient descent backpropagation to adjust network weights"
   [network examples]
-  (loop [network network
-         last-changes (new-weight-accumulator (:weights network))
-         epoch 0]
-    (let [epoch (inc epoch)
-          [gradients mse] (calc-all-errors network examples)]
-      (if (or (gradient-descent-complete? network epoch mse)
-              (not (call-callback-for-epoch network epoch mse false)))
-        (do
-          (call-callback-for-epoch network epoch mse true)
-          network)
-        (let [changes (calc-weight-changes network gradients last-changes)
-              new-weights (apply-weight-changes (:weights network) changes)
-              network (assoc network :weights new-weights)]
-          (recur network changes epoch))))))
+  (binding [*thread-pool* (if (network-option network :calc-batch-error-in-parallel)
+                            (new-thread-pool))]
+    (loop [network network
+           last-changes (new-weight-accumulator (:weights network))
+           epoch 0]
+      (let [epoch (inc epoch)
+            [gradients mse] (calc-batch-error network examples)]
+        (if (or (gradient-descent-complete? network epoch mse)
+                (not (call-callback-for-epoch network epoch mse false)))
+          (do
+            (call-callback-for-epoch network epoch mse true)
+            (if *thread-pool*
+              (.shutdown *thread-pool*))
+            network)
+          (let [changes (calc-weight-changes network gradients last-changes)
+                new-weights (apply-weight-changes (:weights network) changes)
+                network (assoc network :weights new-weights)]
+            (recur network changes epoch)))))))

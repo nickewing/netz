@@ -1,6 +1,14 @@
 (in-ns 'netz.core)
 
+(import '(java.util.concurrent Executors))
+
+(declare ^:dynamic *thread-pool*)
+
 (def init-epsilon 0.5)
+
+(defn- new-thread-pool []
+  (Executors/newFixedThreadPool
+    (.. Runtime getRuntime availableProcessors)))
 
 (defn- random-list
   "Create a list of random doubles between -init-epsilon and +init-epsilon."
@@ -42,11 +50,13 @@
               all-deltas (cons (rest last-deltas) all-deltas)]
           (recur last-deltas all-weights all-activations all-deltas))))))
 
-(defn- add-delta-sum
+(defn- calc-delta-sum
   "Add new delta sum to accumulator."
   [delta-sums deltas activations]
-  (map #(plus %1 (mmult %2 (trans %3)))
-       delta-sums deltas activations))
+  ; (map #(plus %1 (mmult %2 (trans %3)))
+       ; delta-sums deltas activations))
+  (map #(mmult %1 (trans %2))
+       deltas activations))
 
 (defn- new-weight-accumulator
   "Create accumulator matrix list of the same structure as the given weight list
@@ -57,6 +67,10 @@
            (matrix 0 rows cols)))
        weights))
 
+(defn- add-to-accumulator
+  [accumulator change]
+  (map #(plus %1 %2) accumulator change))
+
 (defn- calc-example-error
   "Calculate deltas and squared error for given example."
   [delta-sums weights [input expected-output]]
@@ -64,8 +78,8 @@
         output (last activations)
         output-deltas (minus output expected-output)
         all-deltas (calc-hidden-deltas weights activations output-deltas)
-        delta-sums (add-delta-sum delta-sums all-deltas activations)]
-    (vector delta-sums
+        delta-sum (calc-delta-sum delta-sums all-deltas activations)]
+    (vector delta-sum
             (sum (pow output-deltas 2)))))
 
 (defn- regularize-gradients
@@ -81,25 +95,61 @@
        gradients
        (:weights network)))
 
-(defn- calc-all-errors
-  "Calculate gradients and MSE for example set."
+(defn- calc-batch-error-sequential
   [network examples]
-  (let [num-examples (length examples)
-        weights (:weights network)]
+  (let [weights (:weights network)]
     (loop [delta-sums (new-weight-accumulator weights)
            total-error 0
            examples examples]
       (let [example (first examples)
             examples (rest examples)
-            [delta-sums squared-error] (calc-example-error delta-sums weights example)
+            [delta-sum squared-error] (calc-example-error delta-sums weights example)
+            delta-sums (add-to-accumulator delta-sums delta-sum)
             total-error (+ total-error squared-error)]
         (if (empty? examples)
-          (vector
-            ; gradients
-            (regularize-gradients network (map #(div % num-examples) delta-sums))
-            ; mean squared error
-            (/ total-error num-examples))
+          (vector delta-sums total-error)
           (recur delta-sums total-error examples))))))
+
+(defn- calc-group-error-parallel
+  [network examples total-error delta-sums]
+  (let [weights (:weights network)]
+    (loop [examples examples]
+      (let [example (first examples)
+            examples (rest examples)
+            [delta-sum squared-error] (calc-example-error delta-sums weights example)]
+        (swap! total-error (partial + squared-error))
+        (swap! delta-sums (partial add-to-accumulator delta-sum))
+        (if-not (empty? examples)
+          (recur examples))))))
+
+(defn- calc-batch-error-parallel
+  [network examples]
+  (let [weights (:weights network)
+        total-error (atom 0)
+        delta-sums (atom (new-weight-accumulator weights))
+        groups (partition-all (.getMaximumPoolSize *thread-pool*) examples)
+        tasks (map
+                (fn [group]
+                  (fn []
+                    (calc-group-error-parallel network group total-error delta-sums)))
+                groups)]
+    (doseq [future (.invokeAll *thread-pool* tasks)]
+      (.get future))
+    (vector @delta-sums @total-error)))
+
+(defn- calc-batch-error
+  "Calculate gradients and MSE for example set."
+  [network examples]
+  (let [calc-error-fn (if (network-option network :calc-batch-error-in-parallel)
+                        calc-batch-error-parallel
+                        calc-batch-error-sequential)
+        num-examples (length examples)
+        [delta-sums total-error] (calc-error-fn network examples)]
+    (vector 
+      ; gradients
+      (regularize-gradients network (map #(div % num-examples) delta-sums))
+      ; mean squared error
+      (/ total-error num-examples))))
 
 (defn- calc-weight-changes
   "Calculate weight changes:
