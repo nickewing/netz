@@ -15,7 +15,7 @@ in docs/backpropagation.pdf.
 
 Netz uses [Incanter](http://incanter.org/) for matrix operations.
 
-*NOTE: This project is not production ready!*  Netz has had very little real
+**NOTE: This project is not production ready!**  Netz has had very little real
 world testing and training convergence is still much slower than more
 sophisticated implementations.  For production ready implementations, try:
 
