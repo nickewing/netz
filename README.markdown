@@ -20,6 +20,7 @@ world testing and training convergence is still much slower than more
 sophisticated implementations.  For production ready implementations, try:
 
 * [FANN](http://leenissen.dk/fann/wp/) (C, Java, Ruby, Python and many more..)
+* [Neuroph](http://neuroph.sourceforge.net/) (Java)
 * [Encog](http://www.heatonresearch.com/encog) (Java and CLR)
 
 Usage
