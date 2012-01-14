@@ -30,7 +30,7 @@
 (defprotocol NeuralNetwork
   (run [network inputs])
   (run-binary [network inputs])
-  (train-on-examples [network inputs outputs]))
+  (train-on-examples [network examples]))
 
 (defrecord MultiLayerPerceptron [weights options]
   NeuralNetwork
@@ -40,18 +40,19 @@
       (forward-propagate weights input-activations)))
   (run-binary [network inputs]
     (round-output (run network inputs)))
-  (train-on-examples [network inputs outputs]
-    (let [num-inputs (length (first inputs))
-          num-outputs (length (first outputs))
-          hidden-neurons (:hidden-neurons (:options network))
+  (train-on-examples [network examples]
+    (let [[first-input first-output] (first examples)
+          num-inputs (length first-input)
+          num-outputs (length first-output)
+          hidden-neurons (or (:hidden-neurons (:options network))
+                             (vec num-inputs))
           layer-sizes (conj (vec (cons num-inputs hidden-neurons)) num-outputs)
-          network (assoc network :weights (random-weight-matrices layer-sizes))
-          examples (map #(vector %1 %2) inputs outputs)]
+          network (assoc network :weights (random-weight-matrices layer-sizes))]
       (gradient-descent-backpropagation network examples))))
 
-(defn train [inputs outputs & [options]]
+(defn train [examples & [options]]
   (let [network (MultiLayerPerceptron. nil options)]
-    (train-on-examples network inputs outputs)))
+    (train-on-examples network examples)))
 
 (defn new-network [weights & [options]]
   (MultiLayerPerceptron. weights (or options {})))

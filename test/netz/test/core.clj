@@ -1,4 +1,4 @@
-(ns netz.test
+(ns netz.test.core
   (:use netz.core
         clojure.test
         incanter.core))
@@ -34,20 +34,24 @@
   (is (= [1] (run-binary xnor-network [1 1]))))
 
 (deftest binary-or-train
-  (let [inputs [[0 0] [0 1] [1 0] [1 1]]
-        outputs [[0] [1] [1] [1]]
-        network (train inputs outputs {:hidden-neurons []})]
+  (let [examples [[[0 0] [0]]
+                  [[0 1] [1]]
+                  [[1 0] [1]]
+                  [[1 1] [1]]]
+        network (train examples {:hidden-neurons []})]
     (is (= [0] (run-binary network [0 0])))
     (is (= [1] (run-binary network [1 0])))
     (is (= [1] (run-binary network [0 1])))
     (is (= [1] (run-binary network [1 1])))))
 
 (deftest binary-xnor-train
-  (let [inputs [[0 0] [0 1] [1 0] [1 1]]
-        outputs [[1] [0] [0] [1]]
-        network (train inputs outputs {:hidden-neurons [2]
-                                       :learning-rate 0.2
-                                       :learning-momentum 0.9})]
+  (let [examples [[[0 0] [1]]
+                  [[0 1] [0]]
+                  [[1 0] [0]]
+                  [[1 1] [1]]]
+        network (train examples {:hidden-neurons [2]
+                                :learning-rate 0.2
+                                :learning-momentum 0.9})]
     (is (= [1] (run-binary network [0 0])))
     (is (= [0] (run-binary network [1 0])))
     (is (= [0] (run-binary network [0 1])))

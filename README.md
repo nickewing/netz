@@ -29,16 +29,12 @@ Usage
 (ns your-namespace
   (:require [netz.core :as netz]))
 
-(def inputs [[0 0]
-             [0 1]
-             [1 0]
-             [1 1]])
-(def outputs [[1]
-              [0]
-              [0]
-              [1]])
+(def examples [[[0 0] [1]]
+               [[0 1] [0]]
+               [[1 0] [0]]
+               [[1 1] [1]]])
 
-(def network (netz/train inputs outputs {:hidden-neurons [2]}))
+(def network (netz/train examples {:hidden-neurons [2]}))
 
 (netz/run network [0 0]) ; => [0.9176]
 (netz/run network [0 1]) ; => [0.0549]
@@ -51,7 +47,8 @@ Options
 
 *:hidden-neurons* - A vector containing the number of neurons in each hidden
 layer.  Set to [2 2] for two hidden layers with two neurons each, or [] for no
-hidden layers.  Must be specified.
+hidden layers.  Setting this option is recommended.  Default: One hidden layer
+with the same number of hidden neurons as inputs.
 
 *:learning-rate* - The learning rate used while training.  See docs.  Default:
 0.25.
