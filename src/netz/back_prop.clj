@@ -76,7 +76,7 @@
            (plus gradients
                  (bind-columns
                    (matrix 0 rows 1)
-                   (mult (option network :regularization-constant)
+                   (mult (network-option network :regularization-constant)
                          (sel weights :except-cols 0))))))
        gradients
        (:weights network)))
@@ -105,8 +105,8 @@
   "Calculate weight changes:
   changes = learning rate * gradients + last change * learning momentum."
   [network gradients last-changes]
-  (map #(plus (mult (option network :learning-rate) %1)
-              (mult (option network :learning-momentum) %2))
+  (map #(plus (mult (network-option network :learning-rate) %1)
+              (mult (network-option network :learning-momentum) %2))
        gradients
        last-changes))
 

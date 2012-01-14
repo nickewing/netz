@@ -2,13 +2,13 @@
 
 (defn- gradient-descent-complete?
   [network epoch mse]
-  (or (>= epoch (option network :max-epochs))
-      (< mse (option network :desired-error))))
+  (or (>= epoch (network-option network :max-epochs))
+      (< mse (network-option network :desired-error))))
 
 (defn- call-callback-for-epoch
   [network epoch mse complete]
-  (let [callback  (option network :callback)
-        callback-resolution (option network :callback-resolution)]
+  (let [callback  (network-option network :callback)
+        callback-resolution (network-option network :callback-resolution)]
     (if (and callback
              (or complete
                  (= (mod epoch callback-resolution) 0)))

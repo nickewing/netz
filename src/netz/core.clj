@@ -1,5 +1,4 @@
 (ns netz.core
-  (:gen-class)
   (:use incanter.core))
 
 (defn report-callback
@@ -18,24 +17,12 @@
    :callback-resolution 100
    :regularization-constant 0})
 
-(defn- option
+(defn- network-option
   [network option-name]
   (or (option-name (:options network))
       (option-name default-options)))
 
-(defn- matrix-mult
-  "Multiply two matrices and ensure the result is also a matrix."
-  [a b]
-  (let [result (mmult a b)]
-    (if (matrix? result)
-      result
-      (matrix [result]))))
-
-(defn- round-output
-  "Round outputs to nearest integer."
-  [output]
-  (vec (map #(Math/round ^Double %) output)))
-
+(load "util")
 (load "forward_prop")
 (load "back_prop")
 (load "gradient_descent")
