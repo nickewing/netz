@@ -64,7 +64,8 @@ penalize large weights.  Default: 0.
 
 *:callback* - A callback function.  If provided, Netz will call this function
 after every epoch of training.  Returning false or nil from this callback will
-cause training to stop.  Default: netz.core/report-callback.
+cause training to stop.  See netz.core/report-callback for an example. Default:
+netz.core/report-callback.
 
 *:callback-resolution - An integer specifying how often the callback function is
 invoked.  Default: 100.
