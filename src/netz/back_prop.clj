@@ -82,7 +82,7 @@
   "gradient = gradient + lambda * weights for all columns except the first."
   [network gradients]
   (let [regularization-constant (network-option network-option :regularization-constant)]
-    (if regularization-constant
+    (if (not= regularization-constant 0)
       (map (fn [gradients weights]
              (let [[rows cols] (dim weights)]
                (plus gradients
