@@ -8,18 +8,19 @@ Netz is a Clojure implementation of a [multilayer
 perceptron](http://en.wikipedia.org/wiki/Multilayer_perceptron) (MLP), a type of
 feedforward artificial neural network.  Netz provides functions for training and
 running MLPs.  Training is accomplished via vectorized gradient descent
-batch backpropagation.
+batch [backpropagation](http://en.wikipedia.org/wiki/Backpropagation).
 
-A description of this implementation of backpropagation algorithm can be found
-in docs/backpropagation.pdf.
+A description of this implementation of the backpropagation algorithm can be
+found in docs/backpropagation.pdf.
 
 Netz uses [Incanter](http://incanter.org/) for matrix operations.
 
-*NOTE: This project is not production ready!*  Netz has had very little real
+**NOTE: This project is not production ready!**  Netz has had very little real
 world testing and training convergence is still much slower than more
 sophisticated implementations.  For production ready implementations, try:
 
-* [FANN](http://leenissen.dk/fann/wp/) (C, Java, Ruby, Python and many more..)
+* [FANN](http://leenissen.dk/fann/wp/) (C, Java, Ruby, Python and many more...)
+* [Neuroph](http://neuroph.sourceforge.net/) (Java)
 * [Encog](http://www.heatonresearch.com/encog) (Java and CLR)
 
 Usage
@@ -64,7 +65,7 @@ after every epoch of training.  Returning false or nil from this callback will
 cause training to stop.  See netz.core/report-callback for an example. Default:
 netz.core/report-callback.
 
-*:callback-resolution - An integer specifying how often the callback function is
+*:callback-resolution* - An integer specifying how often the callback function is
 invoked.  Default: 100.
 
 *:max-epochs* - An integer specifying the maximum number of training epochs.
