@@ -45,6 +45,7 @@
     (let [[first-input first-output] (first examples)
           num-inputs (length first-input)
           num-outputs (length first-output)
+          examples (map #(list (matrix (first %)) (matrix (second %))) examples)
           hidden-neurons (or (:hidden-neurons (:options network))
                              (vec num-inputs))
           layer-sizes (conj (vec (cons num-inputs hidden-neurons)) num-outputs)
