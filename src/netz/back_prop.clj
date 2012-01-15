@@ -52,19 +52,15 @@
 
 (defn- calc-delta-sum
   "Add new delta sum to accumulator."
-  [delta-sums deltas activations]
-  ; (map #(plus %1 (mmult %2 (trans %3)))
-       ; delta-sums deltas activations))
-  (map #(mmult %1 (trans %2))
-       deltas activations))
+  [deltas activations]
+  (map #(mmult %1 (trans %2)) deltas activations))
 
 (defn- new-weight-accumulator
   "Create accumulator matrix list of the same structure as the given weight list
   with all zero values."
   [weights]
-  (map (fn [weight]
-         (let [[rows cols] (dim weight)]
-           (matrix 0 rows cols)))
+  (map #(let [[rows cols] (dim %)]
+          (matrix 0 rows cols))
        weights))
 
 (defn- add-to-accumulator
@@ -78,22 +74,25 @@
         output (last activations)
         output-deltas (minus output expected-output)
         all-deltas (calc-hidden-deltas weights activations output-deltas)
-        delta-sum (calc-delta-sum delta-sums all-deltas activations)]
-    (vector delta-sum
-            (sum (pow output-deltas 2)))))
+        delta-sum (calc-delta-sum all-deltas activations)]
+    (list delta-sum
+          (sum (pow output-deltas 2)))))
 
 (defn- regularize-gradients
   "gradient = gradient + lambda * weights for all columns except the first."
   [network gradients]
-  (map (fn [gradients weights]
-         (let [[rows cols] (dim weights)]
-           (plus gradients
-                 (bind-columns
-                   (matrix 0 rows 1)
-                   (mult (network-option network :regularization-constant)
-                         (sel weights :except-cols 0))))))
-       gradients
-       (:weights network)))
+  (let [regularization-constant (network-option network-option :regularization-constant)]
+    (if regularization-constant
+      (map (fn [gradients weights]
+             (let [[rows cols] (dim weights)]
+               (plus gradients
+                     (bind-columns
+                       (matrix 0 rows 1)
+                       (mult regularization-constant
+                             (sel weights :except-cols 0))))))
+           gradients
+           (:weights network))
+      gradients)))
 
 (defn- calc-batch-error-sequential
   [network examples]
@@ -107,7 +106,7 @@
             delta-sums (add-to-accumulator delta-sums delta-sum)
             total-error (+ total-error squared-error)]
         (if (empty? examples)
-          (vector delta-sums total-error)
+          (list delta-sums total-error)
           (recur delta-sums total-error examples))))))
 
 (defn- calc-group-error-parallel
@@ -130,12 +129,11 @@
         groups (partition-all (.getMaximumPoolSize *thread-pool*) examples)
         tasks (map
                 (fn [group]
-                  (fn []
-                    (calc-group-error-parallel network group total-error delta-sums)))
+                  #(calc-group-error-parallel network group total-error delta-sums))
                 groups)]
     (doseq [future (.invokeAll *thread-pool* tasks)]
       (.get future))
-    (vector @delta-sums @total-error)))
+    (list @delta-sums @total-error)))
 
 (defn- calc-batch-error
   "Calculate gradients and MSE for example set."
@@ -145,7 +143,7 @@
                         calc-batch-error-sequential)
         num-examples (length examples)
         [delta-sums total-error] (calc-error-fn network examples)]
-    (vector 
+    (list
       ; gradients
       (regularize-gradients network (map #(div % num-examples) delta-sums))
       ; mean squared error
