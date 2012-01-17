@@ -16,8 +16,8 @@ found in docs/backpropagation.pdf.
 Netz uses [Incanter](http://incanter.org/) for matrix operations.
 
 **NOTE: This project is not production ready!**  Netz has had very little real
-world testing and training convergence is still much slower than more
-sophisticated implementations.  For production ready implementations, try:
+world testing and training convergence is still slower than more sophisticated
+implementations.  For production ready implementations, try:
 
 * [FANN](http://leenissen.dk/fann/wp/) (C, Java, Ruby, Python and many more...)
 * [Neuroph](http://neuroph.sourceforge.net/) (Java)
@@ -51,11 +51,25 @@ layer.  Set to [2 2] for two hidden layers with two neurons each, or [] for no
 hidden layers.  Setting this option is recommended.  Default: One hidden layer
 with the same number of hidden neurons as inputs.
 
-*:learning-rate* - The learning rate used while training.  See docs.  Default:
-0.25.
+*:learning-algorithm* - The algorithm to use while training.  Choose either
+:rprop for the Rprop algorithm or :bprop for standard back propagation.
+Default: :rprop.
 
-*:learning-momentum* - The learning momentum used while training.  See docs.
-Default: 0.
+*:bprop-learning-rate* - The learning rate used while training with the standard
+backpropagation algorithm.  See docs.  Default: 0.25.
+
+*:bprop-learning-momentum* - The learning momentum used while training with the
+standard backpropagation algorithm.  See docs.  Default: 0.
+
+*:rprop-init-update* - Initial update value used for Rprop.  Default: 0.1.
+
+*:rprop-update-min* - Minimum update value used for Rprop.  Default: 1e-6.
+
+*:rprop-update-max* - Maximum update value used for Rprop.  Default: 50.0.
+
+*:rprop-increase-factor* - Increase factor for Rprop.  Default: 1.2.
+
+*:rprop-decrease-factor* - Decrease factor for Rprop.  Default: 0.5.
 
 *:regularization-constant* - The regularization constant (lambda) used to
 penalize large weights.  Default: 0.

@@ -16,9 +16,18 @@
         output (get output-map (first output))]
     [(vec input) output]))
 
-(deftest iris-dataset-test
+(deftest iris-dataset-test-bprop
+  (println "Training on iris dataset with bprop")
   (let [examples (map prepare-example iris)]
     (time (netz/train examples {:hidden-neurons [3]
                                 :desired-error 0.025
-                                :learning-rate 0.5
-                                :learning-momentum 0.5}))))
+                                :training-algorithm :bprop
+                                :bprop-learning-rate 0.5
+                                :bprop-learning-momentum 0.5}))))
+
+(deftest iris-dataset-test-rprop
+  (println "Training on iris dataset with rprop")
+  (let [examples (map prepare-example iris)]
+    (time (netz/train examples {:hidden-neurons [3]
+                                :desired-error 0.025
+                                :training-algorithm :rprop}))))

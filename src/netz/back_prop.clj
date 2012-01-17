@@ -10,6 +10,15 @@
   (Executors/newFixedThreadPool
     (.. Runtime getRuntime availableProcessors)))
 
+(defmacro ^:private with-new-thread-pool
+  [network body]
+  `(binding [*thread-pool* (if (network-option ~network :calc-batch-error-in-parallel)
+                             (new-thread-pool))]
+     (let [ret# ~body]
+       (if *thread-pool*
+         (.shutdown *thread-pool*))
+       ret#)))
+
 (defn- random-list
   "Create a list of random doubles between -init-epsilon and +init-epsilon."
   [len]
@@ -55,12 +64,12 @@
   [deltas activations]
   (map #(mmult %1 (trans %2)) deltas activations))
 
-(defn- new-weight-accumulator
+(defn- new-synapse-list
   "Create accumulator matrix list of the same structure as the given weight list
-  with all zero values."
-  [weights]
+  with all elements set to value."
+  [weights value]
   (map #(let [[rows cols] (dim %)]
-          (matrix 0 rows cols))
+          (matrix value rows cols))
        weights))
 
 (defn- add-to-accumulator
@@ -97,7 +106,7 @@
 (defn- calc-batch-error-sequential
   [network examples]
   (let [weights (:weights network)]
-    (loop [delta-sums (new-weight-accumulator weights)
+    (loop [delta-sums (new-synapse-list weights 0)
            total-error 0
            examples examples]
       (let [example (first examples)
@@ -125,7 +134,7 @@
   [network examples]
   (let [weights (:weights network)
         total-error (atom 0)
-        delta-sums (atom (new-weight-accumulator weights))
+        delta-sums (atom (new-synapse-list weights 0))
         groups (partition-all (.getMaximumPoolSize *thread-pool*) examples)
         tasks (map
                 (fn [group]
@@ -153,8 +162,8 @@
   "Calculate weight changes:
   changes = learning rate * gradients + last change * learning momentum."
   [network gradients last-changes]
-  (map #(plus (mult (network-option network :learning-rate) %1)
-              (mult (network-option network :learning-momentum) %2))
+  (map #(plus (mult (network-option network :bprop-learning-rate) %1)
+              (mult (network-option network :bprop-learning-momentum) %2))
        gradients
        last-changes))
 
@@ -162,5 +171,65 @@
   "Applies changes to weights:
   ∀(weights, changes) weights := weights - changes."
   [weights changes]
-  (map #(minus %1 %2) weights changes))
+  (map #(plus %1 %2) weights changes))
 
+(defn- rprop-calc-weight-change
+  [network last-gradient gradient last-update]
+  (let [inc-factor (network-option network :rprop-increase-factor)
+        dec-factor (network-option network :rprop-decrease-factor)
+        update-min (network-option network :rprop-update-min)
+        update-max (network-option network :rprop-update-max)
+        [rows cols] (dim gradient)
+        new-last-gradient (copy gradient)
+        change (matrix 0 rows cols)
+        update (copy last-update)]
+    (dotimes [i rows]
+      (dotimes [j cols]
+        (let [last-gradient-elem (.getQuick last-gradient i j)
+              gradient-elem (.getQuick gradient i j)
+              last-update-elem (.getQuick last-update i j)
+              dir (* last-gradient-elem gradient-elem)]
+          (cond
+            (> dir 0.0) (let [update-elem (min
+                                            (* last-update-elem inc-factor)
+                                            update-max)]
+                          (.setQuick update i j update-elem)
+                          (.setQuick change i j (* (- (sign gradient-elem)) update-elem))
+                          )
+            (< dir 0.0) (do
+                          (.setQuick update i j (max (* last-update-elem dec-factor)
+                                                     update-min))
+                          (.setQuick change i j 0)
+                          (.setQuick new-last-gradient i j 0))
+            (= dir 0.0) (do
+                          (.setQuick change i j (* (- (sign gradient-elem)) last-update-elem))
+                          )))))
+    (vector new-last-gradient update change)))
+
+(defn- rprop-calc-weight-changes
+  [network last-gradients gradients last-updates]
+  (loop [last-gradients last-gradients
+         gradients gradients
+         last-updates last-updates
+         new-last-gradients []
+         updates []
+         changes []]
+    (let [[last-gradient update change] (rprop-calc-weight-change
+                                          network
+                                          (first last-gradients)
+                                          (first gradients)
+                                          (first last-updates))
+          new-last-gradients (conj new-last-gradients last-gradient)
+          updates (conj updates update)
+          changes (conj changes change)
+          last-gradients (rest last-gradients)
+          gradients (rest gradients)
+          last-updates (rest last-updates)]
+      (if (empty? last-gradients)
+        (list new-last-gradients updates changes)
+        (recur last-gradients
+               gradients
+               last-updates
+               new-last-gradients
+               updates
+               changes)))))

@@ -11,3 +11,9 @@
   [output]
   (vec (map #(Math/round ^Double %) output)))
 
+(defn- sign
+  "Returns +1 if x is positive, -1 if negative, 0 otherwise"
+  [x]
+  (cond (> x 0.0)  1.0
+        (< x 0.0) -1.0
+        (= x 0.0)  0.0))
