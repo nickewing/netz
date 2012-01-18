@@ -4,8 +4,6 @@
 
 (declare ^:dynamic *thread-pool*)
 
-(def init-epsilon 0.5)
-
 (defn- new-thread-pool []
   (Executors/newFixedThreadPool
     (.. Runtime getRuntime availableProcessors)))
@@ -18,20 +16,6 @@
        (if *thread-pool*
          (.shutdown *thread-pool*))
        ret#)))
-
-(defn- random-list
-  "Create a list of random doubles between -init-epsilon and +init-epsilon."
-  [len]
-  (for [x (range 0 len)]
-    (- (rand (* 2 init-epsilon)) init-epsilon)))
-
-(defn- random-weight-matrices
-  "Generate random initial weight matrices for given layer-sizes."
-  [layer-sizes]
-  (for [i (range 0 (dec (length layer-sizes)))]
-    (let [cols (inc (get layer-sizes i))
-          rows (get layer-sizes (inc i))]
-      (matrix (random-list (* rows cols)) cols))))
 
 (defn- back-propagate-layer-deltas
   "Back propagate last-deltas (from layer l-1) and return layer l deltas."

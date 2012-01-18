@@ -7,11 +7,15 @@ Description
 Netz is a Clojure implementation of a [multilayer
 perceptron](http://en.wikipedia.org/wiki/Multilayer_perceptron) (MLP), a type of
 feedforward artificial neural network.  Netz provides functions for training and
-running MLPs.  Training is accomplished via vectorized gradient descent
-batch [backpropagation](http://en.wikipedia.org/wiki/Backpropagation).
+running MLPs.  Training is accomplished via gradient descent batch
+[Rprop](http://en.wikipedia.org/wiki/Rprop) or
+[standard backpropagation](http://en.wikipedia.org/wiki/Backpropagation).
 
-A description of this implementation of the backpropagation algorithm can be
-found in docs/backpropagation.pdf.
+Netz implements Rprop as described by Riedmiller in
+[Rprop - Description and Implementation
+Details](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.21.3428).  A
+description of Netz's standard backpropagation algorithm can be found in
+docs/backpropagation.pdf.
 
 Netz uses [Incanter](http://incanter.org/) for matrix operations.
 
@@ -56,10 +60,10 @@ with the same number of hidden neurons as inputs.
 Default: :rprop.
 
 *:bprop-learning-rate* - The learning rate used while training with the standard
-backpropagation algorithm.  See docs.  Default: 0.25.
+backpropagation algorithm.  Default: 0.25.
 
 *:bprop-learning-momentum* - The learning momentum used while training with the
-standard backpropagation algorithm.  See docs.  Default: 0.
+standard backpropagation algorithm.  Default: 0.
 
 *:rprop-init-update* - Initial update value used for Rprop.  Default: 0.1.
 
@@ -91,6 +95,14 @@ the desired error.
 
 *:calc-batch-error-in-parallel* - Calculate example batch errors in parallel for
 each epoch.  Default: true.
+
+*:weight-initialization-method* - The weight initialization method.  Choose
+either :random for randomly initialized weights or :nguyen-widrow to use the
+[Nguyen-Widrow](http://www.stanford.edu/class/ee373b/nninitialization.pdf)
+initialization method.  Default: :nguyen-widrow.
+
+*:weight-initialization-range* - Randomly initialized weights will be between
+[-:weight-initialization-range .. :weight-initialization-range].  Default: 0.5.
 
 License and Copyright
 ---------------------

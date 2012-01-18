@@ -30,8 +30,6 @@
             (call-callback-for-epoch network epoch mse true)
             network)
           (let [[changes state] (step-fn network gradients state)
-                ; _ (if (= (mod epoch (network-option network :callback-resolution)) 0)
-                    ; (println changes))
                 new-weights (apply-weight-changes (:weights network) changes)
                 network (assoc network :weights new-weights)]
             (recur network state epoch)))))))
@@ -53,17 +51,8 @@
                       (network-option network :rprop-init-update))))
 
 (defn- rprop-step [network gradients [last-gradients last-updates]]
-  ; (println "weights" (map to-vect (:weights network)))
-  ; (println "gradients" (map to-vect gradients))
-  ; (println "last-gradients" (map to-vect last-gradients))
-  ; (println "product" (map to-vect (map mult gradients last-gradients)))
-  ; (println "last-updates" (map to-vect last-updates))
   (let [[last-gradients updates changes]
             (rprop-calc-weight-changes network last-gradients gradients last-updates)]
-    ; (println "> last-gradients" (map to-vect last-gradients))
-    ; (println "> updates" (map to-vect updates))
-    ; (println "> changes" (map to-vect changes))
-    ; (println "===")
     [changes [last-gradients updates]]))
 
 (def gradient-descent-rprop

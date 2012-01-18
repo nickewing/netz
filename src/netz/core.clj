@@ -22,7 +22,9 @@
    :rprop-update-min 1e-6
    :rprop-update-max 50.0
    :rprop-increase-factor 1.2
-   :rprop-decrease-factor 0.5}) 
+   :rprop-decrease-factor 0.5
+   :weight-initialization-method :nguyen-widrow
+   :weight-initialization-range 0.5})
 
 (defn- network-option
   [network option-name]
@@ -31,6 +33,7 @@
 
 (load "util")
 (load "forward_prop")
+(load "weight_init")
 (load "back_prop")
 (load "gradient_descent")
 
@@ -55,7 +58,12 @@
           hidden-neurons (or (:hidden-neurons (:options network))
                              (vec num-inputs))
           layer-sizes (conj (vec (cons num-inputs hidden-neurons)) num-outputs)
-          network (assoc network :weights (random-weight-matrices layer-sizes))
+          init-fn (case (network-option network :weight-initialization-method)
+                    :random random-initial-weights
+                    :nguyen-widrow nguyen-widrow-initial-weights)
+          initial-weights (init-fn layer-sizes
+                                   (network-option network :weight-initialization-range))
+          network (assoc network :weights initial-weights)
           training-fn (case (network-option network :training-algorithm)
                         :bprop gradient-descent-bprop
                         :rprop gradient-descent-rprop)]

@@ -1,7 +1,6 @@
 (ns netz.test.iris
   (:require [netz.core :as netz])
-  (:use netz.core
-        clojure.test
+  (:use clojure.test
         (incanter core datasets)))
 
 (def iris (to-list (to-matrix (get-dataset :iris))))
@@ -16,18 +15,36 @@
         output (get output-map (first output))]
     [(vec input) output]))
 
-(deftest iris-dataset-test-bprop
-  (println "Training on iris dataset with bprop")
-  (let [examples (map prepare-example iris)]
-    (time (netz/train examples {:hidden-neurons [3]
-                                :desired-error 0.025
-                                :training-algorithm :bprop
-                                :bprop-learning-rate 0.5
-                                :bprop-learning-momentum 0.5}))))
+(def iris-examples (map prepare-example iris))
 
-(deftest iris-dataset-test-rprop
-  (println "Training on iris dataset with rprop")
-  (let [examples (map prepare-example iris)]
-    (time (netz/train examples {:hidden-neurons [3]
-                                :desired-error 0.025
-                                :training-algorithm :rprop}))))
+(deftest iris-dataset-test-bprop-rand-init
+  (println "Training on iris dataset with bprop and random initialization")
+  (time (netz/train iris-examples {:hidden-neurons [3]
+                                   :desired-error 0.025
+                                   :training-algorithm :bprop
+                                   :bprop-learning-rate 0.5
+                                   :bprop-learning-momentum 0.5
+                                   :weight-initialization-method :random})))
+
+(deftest iris-dataset-test-rprop-rand-init
+  (println "Training on iris dataset with rprop and random initialization")
+  (time (netz/train iris-examples {:hidden-neurons [3]
+                                   :desired-error 0.025
+                                   :training-algorithm :rprop
+                                   :weight-initialization-method :random})))
+
+(deftest iris-dataset-test-bprop-nguyen-widrow-init
+  (println "Training on iris dataset with bprop and Nguyen-Widrow initialization")
+  (time (netz/train iris-examples {:hidden-neurons [3]
+                                   :desired-error 0.025
+                                   :training-algorithm :bprop
+                                   :bprop-learning-rate 0.5
+                                   :bprop-learning-momentum 0.5
+                                   :weight-initialization-method :nguyen-widrow})))
+
+(deftest iris-dataset-test-rprop-nguyen-widrow-init
+  (println "Training on iris dataset with rprop and Nguyen-Widrow initialization")
+  (time (netz/train iris-examples {:hidden-neurons [3]
+                                   :desired-error 0.025
+                                   :training-algorithm :rprop
+                                   :weight-initialization-method :nguyen-widrow})))
