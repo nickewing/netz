@@ -9,27 +9,27 @@
   true)
 
 (def default-options
-  {:max-epochs 20000 ; maximum number of epochs for training
-   :desired-error 0.005 ; minimum desired error for training
-   :callback report-callback ; called every epoch before weight adjustments
-   :callback-resolution 100 ; how often to call callback (in no. epochs)
-   :regularization-constant 0 ; regularization constant for training, see docs
-   :calc-batch-error-in-parallel true ; calculate batch errors in parallel
+  {:max-epochs 20000
+   :desired-error 0.005
+   :callback report-callback
+   :callback-resolution 100
+   :regularization-constant 0.0
+   :calc-batch-error-in-parallel true
    :training-algorithm :rprop
-   :bprop-learning-rate 0.25 ; learning rate for training, see docs
-   :bprop-learning-momentum 0 ; learning momentum for training, see docs
-   :rprop-init-update 0.1
-   :rprop-update-min 1e-6
-   :rprop-update-max 50.0
-   :rprop-increase-factor 1.2
-   :rprop-decrease-factor 0.5
-   :weight-initialization-method :nguyen-widrow
-   :weight-initialization-range 0.5})
+   :bprop {:learning-rate 0.25
+           :learning-momentum 0.0}
+   :rprop {:init-update 0.1
+           :update-min 1e-6
+           :update-max 50.0
+           :increase-factor 1.2
+           :decrease-factor 0.5}
+   :weight-initialization {:method :nguyen-widrow
+                           :range 0.5}})
 
-(defn- network-option
-  [network option-name]
-  (or (option-name (:options network))
-      (option-name default-options)))
+(defn- get-option
+  [network & option-path]
+  (or (reduce #(%2 %1) (:options network) option-path)
+      (reduce #(%2 %1) default-options option-path)))
 
 (load "util")
 (load "forward_prop")
@@ -58,13 +58,13 @@
           hidden-neurons (or (:hidden-neurons (:options network))
                              (vec num-inputs))
           layer-sizes (conj (vec (cons num-inputs hidden-neurons)) num-outputs)
-          init-fn (case (network-option network :weight-initialization-method)
+          init-fn (case (get-option network :weight-initialization :method)
                     :random random-initial-weights
                     :nguyen-widrow nguyen-widrow-initial-weights)
           initial-weights (init-fn layer-sizes
-                                   (network-option network :weight-initialization-range))
+                                   (get-option network :weight-initialization :range))
           network (assoc network :weights initial-weights)
-          training-fn (case (network-option network :training-algorithm)
+          training-fn (case (get-option network :training-algorithm)
                         :bprop gradient-descent-bprop
                         :rprop gradient-descent-rprop)]
       (training-fn network examples))))

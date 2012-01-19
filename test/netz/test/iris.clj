@@ -22,29 +22,29 @@
   (time (netz/train iris-examples {:hidden-neurons [3]
                                    :desired-error 0.025
                                    :training-algorithm :bprop
-                                   :bprop-learning-rate 0.5
-                                   :bprop-learning-momentum 0.5
-                                   :weight-initialization-method :random})))
+                                   :bprop {:learning-rate 0.5
+                                           :learning-momentum 0.5}
+                                   :weight-initialization {:method :random}})))
 
 (deftest iris-dataset-test-rprop-rand-init
   (println "Training on iris dataset with rprop and random initialization")
   (time (netz/train iris-examples {:hidden-neurons [3]
                                    :desired-error 0.025
                                    :training-algorithm :rprop
-                                   :weight-initialization-method :random})))
+                                   :weight-initialization {:method :random}})))
 
 (deftest iris-dataset-test-bprop-nguyen-widrow-init
   (println "Training on iris dataset with bprop and Nguyen-Widrow initialization")
   (time (netz/train iris-examples {:hidden-neurons [3]
                                    :desired-error 0.025
                                    :training-algorithm :bprop
-                                   :bprop-learning-rate 0.5
-                                   :bprop-learning-momentum 0.5
-                                   :weight-initialization-method :nguyen-widrow})))
+                                   :bprop {:learning-rate 0.5
+                                           :learning-momentum 0.5}
+                                   :weight-initialization {:method :nguyen-widrow}})))
 
 (deftest iris-dataset-test-rprop-nguyen-widrow-init
   (println "Training on iris dataset with rprop and Nguyen-Widrow initialization")
   (time (netz/train iris-examples {:hidden-neurons [3]
                                    :desired-error 0.025
                                    :training-algorithm :rprop
-                                   :weight-initialization-method :nguyen-widrow})))
+                                   :weight-initialization {:method :nguyen-widrow}})))

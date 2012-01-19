@@ -1,3 +1,5 @@
+(in-ns 'netz.core)
+
 (defn- random-list
   "Create a list of random doubles between -init-epsilon and +init-epsilon."
   [len init-epsilon]

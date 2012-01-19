@@ -19,9 +19,9 @@ docs/backpropagation.pdf.
 
 Netz uses [Incanter](http://incanter.org/) for matrix operations.
 
-**NOTE: This project is not production ready!**  Netz has had very little real
-world testing and training convergence is still slower than more sophisticated
-implementations.  For production ready implementations, try:
+**WARNING**: Netz has had very little real world testing and training
+convergence is still slower than more sophisticated implementations.  For
+production ready implementations, try:
 
 * [FANN](http://leenissen.dk/fann/wp/) (C, Java, Ruby, Python and many more...)
 * [Neuroph](http://neuroph.sourceforge.net/) (Java)
@@ -50,59 +50,56 @@ Usage
 Options
 -------
 
-*:hidden-neurons* - A vector containing the number of neurons in each hidden
+* **:hidden-neurons** - A vector containing the number of neurons in each hidden
 layer.  Set to [2 2] for two hidden layers with two neurons each, or [] for no
 hidden layers.  Setting this option is recommended.  Default: One hidden layer
 with the same number of hidden neurons as inputs.
 
-*:learning-algorithm* - The algorithm to use while training.  Choose either
+* **:learning-algorithm** - The algorithm to use while training.  Choose either
 :rprop for the Rprop algorithm or :bprop for standard back propagation.
-Default: :rprop.
+Default: `:rprop`.
 
-*:bprop-learning-rate* - The learning rate used while training with the standard
-backpropagation algorithm.  Default: 0.25.
+* **:bprop**
+  * **:learning-rate** - The learning rate used while training with the standard
+  backpropagation algorithm.  Default: 0.25.
+  * **:learning-momentum** - The learning momentum used while training with the
+  standard backpropagation algorithm.  Default: 0.0.
 
-*:bprop-learning-momentum* - The learning momentum used while training with the
-standard backpropagation algorithm.  Default: 0.
+* **:rprop**
+  * **:init-update** - Initial update value used for Rprop.  Default: 0.1.
+  * **:update-min** - Minimum update value used for Rprop.  Default: 1e-6.
+  * **:update-max** - Maximum update value used for Rprop.  Default: 50.0.
+  * **:increase-factor** - Increase factor for Rprop.  Default: 1.2.
+  * **:decrease-factor** - Decrease factor for Rprop.  Default: 0.5.
 
-*:rprop-init-update* - Initial update value used for Rprop.  Default: 0.1.
+* **:regularization-constant** - The regularization constant (lambda) used to
+penalize large weights.  Default: 0.0.
 
-*:rprop-update-min* - Minimum update value used for Rprop.  Default: 1e-6.
-
-*:rprop-update-max* - Maximum update value used for Rprop.  Default: 50.0.
-
-*:rprop-increase-factor* - Increase factor for Rprop.  Default: 1.2.
-
-*:rprop-decrease-factor* - Decrease factor for Rprop.  Default: 0.5.
-
-*:regularization-constant* - The regularization constant (lambda) used to
-penalize large weights.  Default: 0.
-
-*:callback* - A callback function.  If provided, Netz will call this function
+* **:callback** - A callback function.  If provided, Netz will call this function
 after every epoch of training.  Returning false or nil from this callback will
 cause training to stop.  See netz.core/report-callback for an example. Default:
-netz.core/report-callback.
+`netz.core/report-callback`.
 
-*:callback-resolution* - An integer specifying how often the callback function is
+* **:callback-resolution** - An integer specifying how often the callback function is
 invoked.  Default: 100.
 
-*:max-epochs* - An integer specifying the maximum number of training epochs.
+* **:max-epochs** - An integer specifying the maximum number of training epochs.
 Default: 20,000.
 
-*:desired-error* - A float specifying the desired training set mean squared
+* **:desired-error** - A float specifying the desired training set mean squared
 error (MSE) used while training.  Training will stop once the MSE drops below
-the desired error.
+the desired error.  Default: 0.005
 
-*:calc-batch-error-in-parallel* - Calculate example batch errors in parallel for
+* **:calc-batch-error-in-parallel** - Calculate example batch errors in parallel for
 each epoch.  Default: true.
 
-*:weight-initialization-method* - The weight initialization method.  Choose
-either :random for randomly initialized weights or :nguyen-widrow to use the
-[Nguyen-Widrow](http://www.stanford.edu/class/ee373b/nninitialization.pdf)
-initialization method.  Default: :nguyen-widrow.
-
-*:weight-initialization-range* - Randomly initialized weights will be between
-[-:weight-initialization-range .. :weight-initialization-range].  Default: 0.5.
+* **:weight-initialization**
+  * **:method** - The weight initialization method.  Choose
+  either :random for randomly initialized weights or :nguyen-widrow to use the
+  [Nguyen-Widrow](http://www.stanford.edu/class/ee373b/nninitialization.pdf)
+  initialization method.  Default: `:nguyen-widrow`.
+  * **:range** - Randomly initialized weights will be between
+  [-:weight-initialization-range .. :weight-initialization-range].  Default: 0.5.
 
 License and Copyright
 ---------------------

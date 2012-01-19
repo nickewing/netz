@@ -2,13 +2,13 @@
 
 (defn- gradient-descent-complete?
   [network epoch mse]
-  (or (>= epoch (network-option network :max-epochs))
-      (< mse (network-option network :desired-error))))
+  (or (>= epoch (get-option network :max-epochs))
+      (< mse (get-option network :desired-error))))
 
 (defn- call-callback-for-epoch
   [network epoch mse complete]
-  (let [callback  (network-option network :callback)
-        callback-resolution (network-option network :callback-resolution)]
+  (let [callback (get-option network :callback)
+        callback-resolution (get-option network :callback-resolution)]
     (if (and callback
              (or complete
                  (= (mod epoch callback-resolution) 0)))
@@ -16,14 +16,19 @@
       true)))
 
 (defn- gradient-descent
-  "Preform gradient descent backpropagation to adjust network weights"
-  [init-fn step-fn network examples]
-  (with-new-thread-pool network
+  "Preform gradient descent to adjust network weights"
+  [step-fn init-state network examples]
+  (let [calc-batch-error-in-parallel (get-option network :calc-batch-error-in-parallel)
+        regularize-gradients (get-option network :regularization-constant)
+        thread-pool (if calc-batch-error-in-parallel (new-thread-pool))]
     (loop [network network
-           state (init-fn network)
+           state init-state
            epoch 0]
       (let [epoch (inc epoch)
-            [gradients mse] (calc-batch-error network examples)]
+            [gradients mse] (calc-batch-error network
+                                              examples
+                                              regularize-gradients
+                                              thread-pool)]
         (if (or (gradient-descent-complete? network epoch mse)
                 (not (call-callback-for-epoch network epoch mse false)))
           (do
@@ -34,28 +39,28 @@
                 network (assoc network :weights new-weights)]
             (recur network state epoch)))))))
 
-(defn- bprop-init-state [network]
-  (new-synapse-list (:weights network) 0))
+(defn gradient-descent-bprop
+  [network examples]
+  (let [options (get-option network :bprop)
+        last-changes (new-synapse-list (:weights network) 0)]
+    (gradient-descent
+      (fn [network gradients last-changes]
+        (let [changes (bprop-calc-weight-changes network gradients last-changes options)]
+          [(map minus changes) changes]))
+      last-changes
+      network
+      examples)))
 
-(defn- bprop-step [network gradients last-changes]
-  (let [changes (calc-weight-changes network gradients last-changes)]
-    [(map minus changes) changes]))
-
-(def gradient-descent-bprop
-  (partial gradient-descent bprop-init-state bprop-step))
-
-(defn- rprop-init-state [network]
-  (vector 
-    (new-synapse-list (:weights network) 0)
-    (new-synapse-list (:weights network)
-                      (network-option network :rprop-init-update))))
-
-(defn- rprop-step [network gradients [last-gradients last-updates]]
-  (let [[last-gradients updates changes]
-            (rprop-calc-weight-changes network last-gradients gradients last-updates)]
-    [changes [last-gradients updates]]))
-
-(def gradient-descent-rprop
-  (partial gradient-descent rprop-init-state rprop-step))
-
-
+(defn gradient-descent-rprop
+  [network examples]
+  (let [options (get-option network :rprop)
+        last-gradients (new-synapse-list (:weights network) 0)
+        last-updates (new-synapse-list (:weights network) (:init-update options))]
+    (gradient-descent
+      (fn [network gradients [last-gradients last-updates]]
+        (let [[last-gradients updates changes]
+              (rprop-calc-weight-changes last-gradients gradients last-updates options)]
+          [changes [last-gradients updates]]))
+      (list last-gradients last-updates)
+      network
+      examples)))

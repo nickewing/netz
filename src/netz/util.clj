@@ -17,3 +17,20 @@
   (cond (> x 0.0)  1.0
         (< x 0.0) -1.0
         (= x 0.0)  0.0))
+
+(defn- map-to-vectors
+  "Map given inputs to func and conj each output to the end of accumulating
+  vectors."
+  [func & inputs]
+  (loop [inputs inputs
+         accum nil]
+    (let [input (map first inputs)
+          inputs (map rest inputs)
+          output (apply func input)
+          accum (if accum
+                  (map conj accum output)
+                  (map vector output))]
+      (if (empty? (first inputs))
+        accum
+        (recur inputs accum)))))
+

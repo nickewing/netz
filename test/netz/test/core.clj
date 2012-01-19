@@ -88,8 +88,8 @@
     xnor-examples-bipolar
     {:hidden-neurons [4]
      :training-algorithm :bprop
-     :bprop-learning-rate 0.2
-     :bprop-learning-momentum 0.9}))
+     :bprop {:learning-rate 0.2
+             :learning-momentum 0.9}}))
 
 (deftest binary-xnor-train-rprop
   (println "Training XNOR with rprop")

@@ -2,20 +2,9 @@
 
 (import '(java.util.concurrent Executors))
 
-(declare ^:dynamic *thread-pool*)
-
 (defn- new-thread-pool []
   (Executors/newFixedThreadPool
     (.. Runtime getRuntime availableProcessors)))
-
-(defmacro ^:private with-new-thread-pool
-  [network body]
-  `(binding [*thread-pool* (if (network-option ~network :calc-batch-error-in-parallel)
-                             (new-thread-pool))]
-     (let [ret# ~body]
-       (if *thread-pool*
-         (.shutdown *thread-pool*))
-       ret#)))
 
 (defn- back-propagate-layer-deltas
   "Back propagate last-deltas (from layer l-1) and return layer l deltas."
@@ -36,15 +25,15 @@
       (if (empty? all-weights)
         all-deltas
         (let [weights (first all-weights)
-              all-weights (rest all-weights)
               activations (first all-activations)
+              all-weights (rest all-weights)
               all-activations (rest all-activations)
               last-deltas (back-propagate-layer-deltas last-deltas weights activations)
               all-deltas (cons (rest last-deltas) all-deltas)]
           (recur last-deltas all-weights all-activations all-deltas))))))
 
-(defn- calc-delta-sum
-  "Add new delta sum to accumulator."
+(defn- calc-gradient-sum
+  "Calculate delta sum"
   [deltas activations]
   (map #(mmult %1 (trans %2)) deltas activations))
 
@@ -56,100 +45,99 @@
           (matrix value rows cols))
        weights))
 
-(defn- add-to-accumulator
-  [accumulator change]
-  (map #(plus %1 %2) accumulator change))
+(defn- add-to-synapse-list
+  [synapse-list change]
+  (map #(plus %1 %2) synapse-list change))
 
 (defn- calc-example-error
   "Calculate deltas and squared error for given example."
-  [delta-sums weights [input expected-output]]
+  [gradient-sums weights [input expected-output]]
   (let [activations (forward-propagate-all-activations weights (matrix input))
         output (last activations)
         output-deltas (minus output expected-output)
         all-deltas (calc-hidden-deltas weights activations output-deltas)
-        delta-sum (calc-delta-sum all-deltas activations)]
-    (list delta-sum
+        gradient-sum (calc-gradient-sum all-deltas activations)]
+    (list gradient-sum
           (sum (pow output-deltas 2)))))
 
 (defn- regularize-gradients
   "gradient = gradient + lambda * weights for all columns except the first."
-  [network gradients]
-  (let [regularization-constant (network-option network-option :regularization-constant)]
-    (if (not= regularization-constant 0)
-      (map (fn [gradients weights]
-             (let [[rows cols] (dim weights)]
-               (plus gradients
-                     (bind-columns
-                       (matrix 0 rows 1)
-                       (mult regularization-constant
-                             (sel weights :except-cols 0))))))
-           gradients
-           (:weights network))
-      gradients)))
+  [network gradients regularization-constant]
+  (if (not= regularization-constant 0)
+    (map (fn [gradients weights]
+           (let [[rows cols] (dim weights)]
+             (plus gradients
+                   (bind-columns
+                     (matrix 0 rows 1)
+                     (mult regularization-constant
+                           (sel weights :except-cols 0))))))
+         gradients
+         (:weights network))
+    gradients))
 
 (defn- calc-batch-error-sequential
   [network examples]
   (let [weights (:weights network)]
-    (loop [delta-sums (new-synapse-list weights 0)
+    (loop [gradient-sums (new-synapse-list weights 0)
            total-error 0
            examples examples]
       (let [example (first examples)
             examples (rest examples)
-            [delta-sum squared-error] (calc-example-error delta-sums weights example)
-            delta-sums (add-to-accumulator delta-sums delta-sum)
+            [gradient-sum squared-error] (calc-example-error gradient-sums weights example)
+            gradient-sums (add-to-synapse-list gradient-sums gradient-sum)
             total-error (+ total-error squared-error)]
         (if (empty? examples)
-          (list delta-sums total-error)
-          (recur delta-sums total-error examples))))))
+          (list gradient-sums total-error)
+          (recur gradient-sums total-error examples))))))
 
 (defn- calc-group-error-parallel
-  [network examples total-error delta-sums]
+  [network examples total-error gradient-sums]
   (let [weights (:weights network)]
-    (loop [examples examples]
-      (let [example (first examples)
-            examples (rest examples)
-            [delta-sum squared-error] (calc-example-error delta-sums weights example)]
+    (doseq [example examples]
+      (let [[gradient-sum squared-error] (calc-example-error gradient-sums weights example)]
         (swap! total-error (partial + squared-error))
-        (swap! delta-sums (partial add-to-accumulator delta-sum))
-        (if-not (empty? examples)
-          (recur examples))))))
+        (swap! gradient-sums (partial add-to-synapse-list gradient-sum))))))
 
 (defn- calc-batch-error-parallel
-  [network examples]
+  [thread-pool network examples]
   (let [weights (:weights network)
         total-error (atom 0)
-        delta-sums (atom (new-synapse-list weights 0))
-        groups (partition-all (.getMaximumPoolSize *thread-pool*) examples)
+        gradient-sums (atom (new-synapse-list weights 0))
+        groups (partition-all (.getMaximumPoolSize thread-pool) examples)
         tasks (map
                 (fn [group]
-                  #(calc-group-error-parallel network group total-error delta-sums))
+                  #(calc-group-error-parallel network group total-error gradient-sums))
                 groups)]
-    (doseq [future (.invokeAll *thread-pool* tasks)]
+    (doseq [future (.invokeAll thread-pool tasks)]
       (.get future))
-    (list @delta-sums @total-error)))
+    (list @gradient-sums @total-error)))
 
 (defn- calc-batch-error
   "Calculate gradients and MSE for example set."
-  [network examples]
-  (let [calc-error-fn (if (network-option network :calc-batch-error-in-parallel)
-                        calc-batch-error-parallel
+  [network examples regularization-constant thread-pool]
+  (let [calc-error-fn (if thread-pool
+                        (partial calc-batch-error-parallel thread-pool)
                         calc-batch-error-sequential)
         num-examples (length examples)
-        [delta-sums total-error] (calc-error-fn network examples)]
+        [gradient-sums total-error] (calc-error-fn network examples)]
     (list
       ; gradients
-      (regularize-gradients network (map #(div % num-examples) delta-sums))
+      (regularize-gradients network
+                            (map #(div % num-examples) gradient-sums)
+                            regularization-constant)
       ; mean squared error
       (/ total-error num-examples))))
 
-(defn- calc-weight-changes
+(defn- bprop-calc-weight-changes
   "Calculate weight changes:
   changes = learning rate * gradients + last change * learning momentum."
-  [network gradients last-changes]
-  (map #(plus (mult (network-option network :bprop-learning-rate) %1)
-              (mult (network-option network :bprop-learning-momentum) %2))
-       gradients
-       last-changes))
+  [network gradients last-changes options]
+  (let [learning-rate (:learning-rate options)
+        learning-momentum (:learning-momentum options)]
+    (map #(plus (mult learning-rate %1)
+                (mult learning-momentum %2))
+         gradients
+         last-changes)))
 
 (defn- apply-weight-changes
   "Applies changes to weights:
@@ -158,12 +146,8 @@
   (map #(plus %1 %2) weights changes))
 
 (defn- rprop-calc-weight-change
-  [network last-gradient gradient last-update]
-  (let [inc-factor (network-option network :rprop-increase-factor)
-        dec-factor (network-option network :rprop-decrease-factor)
-        update-min (network-option network :rprop-update-min)
-        update-max (network-option network :rprop-update-max)
-        [rows cols] (dim gradient)
+  [last-gradient gradient last-update inc-factor dec-factor update-min update-max]
+  (let [[rows cols] (dim gradient)
         new-last-gradient (copy gradient)
         change (matrix 0 rows cols)
         update (copy last-update)]
@@ -186,34 +170,18 @@
                           (.setQuick change i j 0)
                           (.setQuick new-last-gradient i j 0))
             (= dir 0.0) (do
-                          (.setQuick change i j (* (- (sign gradient-elem)) last-update-elem))
-                          )))))
-    (vector new-last-gradient update change)))
+                          (.setQuick change i j (* (- (sign gradient-elem)) last-update-elem)))))))
+    (list new-last-gradient update change)))
 
 (defn- rprop-calc-weight-changes
-  [network last-gradients gradients last-updates]
-  (loop [last-gradients last-gradients
-         gradients gradients
-         last-updates last-updates
-         new-last-gradients []
-         updates []
-         changes []]
-    (let [[last-gradient update change] (rprop-calc-weight-change
-                                          network
-                                          (first last-gradients)
-                                          (first gradients)
-                                          (first last-updates))
-          new-last-gradients (conj new-last-gradients last-gradient)
-          updates (conj updates update)
-          changes (conj changes change)
-          last-gradients (rest last-gradients)
-          gradients (rest gradients)
-          last-updates (rest last-updates)]
-      (if (empty? last-gradients)
-        (list new-last-gradients updates changes)
-        (recur last-gradients
-               gradients
-               last-updates
-               new-last-gradients
-               updates
-               changes)))))
+  [last-gradients gradients last-updates options]
+  (let [inc-factor (:increase-factor options)
+        dec-factor (:decrease-factor options)
+        update-min (:update-min options)
+        update-max (:update-max options)]
+    (map-to-vectors
+      #(rprop-calc-weight-change %1 %2 %3 inc-factor dec-factor update-min update-max)
+      last-gradients
+      gradients
+      last-updates)))
+
